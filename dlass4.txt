@@ -1,0 +1,131 @@
+#Importing libraries
+import matplotlib.pyplot as plt
+import pandas as pd
+import tensorflow as tf
+import seaborn as sns
+from tensorflow.keras.models import Model
+from sklearn.metrics import accuracy_score, precision_score, recall_score
+from sklearn.model_selection import train_test_split
+from keras import Sequential
+sns.set()
+import numpy as np
+from tensorflow.keras import layers, losses
+#Importing data and Checking the data
+df = pd.read_csv('http://storage.googleapis.com/download.tensorflow.org/data/ecg.csv', header=None)
+raw_data = df.values
+df.head()
+
+
+
+#Splitting the data and labels
+labels = raw_data[:, -1]
+data = raw_data[:, 0:-1]
+pd.Series(labels).value_counts()
+
+
+
+#Splitting the training and testing data
+train_data,test_data, train_labels,test_labels = train_test_split(
+ data, labels, test_size = 0.2, random_state=21
+)
+#Structuring the data
+min = np.min(train_data)
+max = np.max(train_data)
+train_data = ( train_data - min ) / ( max - min )
+test_data = ( test_data - min ) / ( max - min )
+
+
+#Dividing the data using true / false value
+train_labels = train_labels.astype(bool)
+test_labels = test_labels.astype(bool)
+normal_train_data = train_data[train_labels]
+normal_test_data = test_data[test_labels]
+anamalous_train_data = train_data[~train_labels]
+anamalous_test_data = test_data[~test_labels]
+#Printing Values
+~train_labels
+
+
+
+#Plotting normal ECG
+plt.grid()
+plt.plot(np.arange(140),normal_train_data[0])
+plt.title('A Normal ECG')
+plt.show()
+
+
+#Plotting a anomalous ECG
+plt.grid()
+plt.plot(np.arange(140),anamalous_train_data[0])
+plt.title('A Anomalous ECG')
+plt.show()
+
+
+
+#Model Building
+class AnomalyDetector(Model):
+  def __init__(self):
+    super(AnomalyDetector, self).__init__()
+    self.encoder = Sequential([
+        layers.Dense(32, activation='relu'),
+        layers.Dense(16, activation='relu'),
+        layers.Dense(8, activation='relu')
+ ])
+    self.decoder = tf.keras.Sequential([
+        layers.Dense(16, activation='relu'),
+        layers.Dense(32, activation='relu'),
+        layers.Dense(140, activation='sigmoid')
+ ])
+  def call(self, x):
+      encoded = self.encoder(x)
+      decoded = self.decoder(encoded)
+      return decoded
+autoencoder = AnomalyDetector()
+
+
+
+#Compiling model using loss function and optimizer
+autoencoder.compile(optimizer='adam', loss='mae')
+
+
+Fitting the data
+history = autoencoder.fit(normal_train_data, normal_train_data,
+ epochs = 20,
+ batch_size=512,
+ validation_data=(normal_test_data, normal_test_data),
+ shuffle=True)
+#Plotting the difference between loss and validation loss of data
+plt.plot(history.history['loss'],label='Training Loss')
+plt.plot(history.history['val_loss'],label='Testing Loss')
+plt.legend()
+
+
+
+#Plotting the difference between input and reconstruction and error or anomalous test data set
+encoded_image = autoencoder.encoder(anamalous_test_data).numpy()
+decoded_image = autoencoder.decoder(encoded_image).numpy()
+plt.plot(anamalous_test_data[0],'b')
+plt.plot(decoded_image[0],'r')
+plt.fill_between(np.arange(140),decoded_image[0],anamalous_test_data[0],color='lightcoral')
+plt.legend(labels=['Input',"Reconstruction","Error"])
+plt.show()
+
+
+
+#Plotting histogram prediction for normal test data
+reconstructions = autoencoder.predict(normal_train_data)
+train_loss = tf.keras.losses.mae(reconstructions, normal_train_data)
+plt.hist(train_loss[None,:],bins=50)
+plt.xlabel("Train Loss")
+plt.ylabel("No of examples")
+plt.show()
+
+
+
+#Plotting histogram prediction for normal test data
+reconstructions = autoencoder.predict(normal_train_data)
+train_loss = tf.keras.losses.mae(reconstructions, normal_train_data)
+plt.hist(train_loss[None,:],bins=50)
+plt.xlabel("Train Loss")
+plt.ylabel("No of examples")
+plt.show()
