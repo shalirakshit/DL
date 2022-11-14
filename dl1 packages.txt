@@ -1,0 +1,23 @@
+#import
+!pip install tensorflow
+
+import numpy as np
+from tensorflow import keras
+from tensorflow.keras import layers
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Flatten
+
+model=Sequential([
+Flatten(input_shape=(1,)), Dense(1,activation='linear')
+])
+model.summary()
+
+# weight intialization
+xs = np.array([-3.0, -1.0, 1.0, 3.0, 5.0, 7.0], dtype=float)
+ys = np.array([ -1.0, 0.0, 1.0, 2.0, 3.0, 4.0], dtype=float)
+# complie
+model.compile(optimizer='sgd', loss='mean_squared_error')
+
+# model predict
+print(model.predict([1.0]))
+print(model.weights)
